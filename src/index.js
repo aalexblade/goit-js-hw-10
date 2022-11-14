@@ -1,71 +1,80 @@
 import './css/styles.css';
 import Notiflix from 'notiflix';
 import debounce from 'lodash.debounce';
-import { fetchCountry } from './fetchCountries';
+
+import { fetchCountries } from './js/fetchCountries';
 
 const DEBOUNCE_DELAY = 300;
+
+const searchBox = document.querySelector('#search-box');
 const countryList = document.querySelector('.country-list');
 const countryInfo = document.querySelector('.country-info');
-const inputRef = document.querySelector('#search-box');
-const itemRef = document.querySelector('.country-item');
 
-inputRef.addEventListener('input', debounce(searchCountry, DEBOUNCE_DELAY));
-function searchCountry(event) {
-  clearCountry()
-  const countryName = inputRef.value.trim().toLowerCase();
-  fetchCountry(countryName).then(showCountry)
-  .catch(fetchError);
+const searchCountry = evt => {
+  const name = searchBox.value.trim();
+  if (name === '') return clearAll();
+
+  fetchCountries(name)
+    .then(data => {
+      countriesData(data);
+    })
+    .catch(error => {
+      if (error.message === '404') {
+        Notiflix.Notify.failure('Oops, there is no country with that name');
+      }
+    });
+
+    
+    evt.preventDefault();
 };
 
-function clearCountry() {
-  countryInfo.innerHTML = '';
+function clearAll() {
   countryList.innerHTML = '';
+  countryInfo.innerHTML = '';
 };
 
-function fetchError() {
-  Notiflix.Notify.failure('Oops, there is no country with that name');
-}
-
-function showCountry(country) {
-  if (country.length === 1) {
-    countryInfo.innerHTML = addInfo(country[0]);
-  };  
-
-  if (country.length > 1 && country.length <=10) {
-      countryList.innerHTML = addList(country);
-  };
-
-  if (country.length > 10) {
-    Notiflix.Notify.info("Too many matches found. Please enter a more specific name.")
-  }; 
+function countriesData(data) {
+    if (data.length > 10) {
+      clearAll()
+        Notiflix.Notify.info('Too many matches found. Please enter a more specific name.');
+    };
+    if (data.length > 1 && data.length <= 10) {
+         clearAll()
+        return (countryList.innerHTML = data.map(item =>
+            `   
+            <li class = 'country_item'>
+                    <img src = '${item.flags.svg}' width = 80 height = 40/>
+                    <p class = 'country_text'>${item.name.official}</p>
+               
+                    </li>
+            `
+        ).join(''));
+    };
+    if (data.length === 1){
+        clearAll()
+        
+        return (countryInfo.innerHTML = data
+            .map(
+                item => 
+                `  
+                <div class = 'country'>
+                    
+                        <img src = '${item.flags.svg}' width = 300 height = 150/>
+    
+                        <div class = 'country-body'>
+                        
+                            <h3>${item.name.official}</h3>
+                            <p><b>Capital: </b> ${item.capital}</p>
+                            <p><b>Population: </b> ${item.population}</p>
+                            <p><b>Languages: </b> ${Object.values(
+            item.languages).join(', ')}</p>
+                        </div> 
+                 </div> 
+                 `
+            )
+            .join(''));
+    }
+   
 };
 
-function addList(country) {
-  return country.map(({flags, name}) => {return `
-  <li class='country-item'>
-  <img src ='${flags.svg}' alt = '${name.official}' class='country-flag' width =60px height 40px>${name.official}
-  </li>`})
-  .join('');
-};
- 
-function addInfo(country) {
-  const {name, flags, capital, population, languages} = country;
-  return `<div class='country-name'>
-  <img src ='${flags.svg}' alt = '${name.official}'>
-  <h1 class='title'>${name.official}</h1>
-  </div>
-  <div class='description'>
-  <p>Capital : ${capital}</p>
-  <p>Population : ${population}</p>
-  <p>Languages : ${Object.values(languages)}</p>
-  </div>`;
-};
-
-countryList.addEventListener('click', chooseCountry);
-
-function chooseCountry(event) {
-    clearCountry()
-    const countryName = event.target.textContent.trim().toLowerCase();
-    fetchCountry(countryName).then(showCountry)
-    .catch(fetchError);
-}
+searchBox.addEventListener('input', debounce(searchCountry, DEBOUNCE_DELAY));
